@@ -10,6 +10,11 @@ namespace Zorach
     {
         private const string ZORACH_ONNX_MODEL_PATH = nameof(ZORACH_ONNX_MODEL_PATH);
 
+        private const string DEFAULT_SYSTEM_PROMPT = @"
+Your name is 'Zorach' and you are an AI assistant.
+Answer questions using a direct style.
+";
+
         static async Task Main(string[] args)
         {
             var modelPath = Environment.GetEnvironmentVariable(nameof(ZORACH_ONNX_MODEL_PATH));
@@ -23,6 +28,18 @@ namespace Zorach
             var settings = await GetModelSettings(modelPath);
             settings.PastPresentShareBuffer = false;
 
+            Console.WriteLine($"{DEFAULT_SYSTEM_PROMPT}");
+            Console.WriteLine("Type system prompt if you want change.");
+            Console.Write("System: ");
+
+            var systemPrompt = Console.ReadLine();
+            Console.WriteLine();
+
+            if (string.IsNullOrEmpty(systemPrompt))
+            {
+                systemPrompt = DEFAULT_SYSTEM_PROMPT;
+            }
+
             // create kernel
             var builder = Kernel.CreateBuilder();
             builder.AddOnnxRuntimeGenAIChatCompletion(modelPath: modelPath);
@@ -31,6 +48,8 @@ namespace Zorach
             // create chat
             var chat = kernel.GetRequiredService<IChatCompletionService>();
             var history = new ChatHistory();
+
+            history.AddSystemMessage(systemPrompt);
 
             // run chat
             while (true)
@@ -43,7 +62,8 @@ namespace Zorach
                 }
                 history.AddUserMessage(userQ);
 
-                Console.Write($"Phi3: ");
+                Console.WriteLine();
+                Console.Write($"Z: ");
                 var response = "";
                 var result = chat.GetStreamingChatMessageContentsAsync(history, executionSettings: settings);
                 await foreach (var message in result)
@@ -52,7 +72,8 @@ namespace Zorach
                     response += message.Content;
                 }
                 history.AddAssistantMessage(response);
-                Console.WriteLine("");
+                Console.WriteLine();
+                Console.WriteLine();
             }
         }
 
